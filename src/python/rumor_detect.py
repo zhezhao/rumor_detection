@@ -23,6 +23,22 @@ def zhe_pipeline(text, stemmer):
 	out_text = stemmer.stem(pre_text)
 	return out_text
 
+def zhe_preprocess(text):
+	pre_text = re.sub('[^A-Za-z0-9#\?\!\'\"\@\(\)\:\$\%]+',' ',text)
+	pre_text = re.sub('\?',' ? ',pre_text)
+	pre_text = re.sub('\@[A-Za-z0-9_]*',' @user ',pre_text)
+	pre_text = re.sub('\!',' ! ',pre_text)
+	pre_text = re.sub('\(',' ( ',pre_text)
+	pre_text = re.sub('\)',' ) ',pre_text)
+	pre_text = re.sub('\"',' \" ',pre_text)
+	pre_text = re.sub('\:',' : ',pre_text)
+	pre_text = re.sub('\$',' $ ',pre_text)
+	pre_text = re.sub('\%',' % ',pre_text)
+	pre_text = re.sub(' [ ]*', ' ', pre_text)
+	pre_text = pre_text.lower()
+	return pre_text
+
+
 def shingle(text, size, minlen = 7):
 	if text is None:
 		return None
@@ -149,26 +165,14 @@ class rumor:
 		self.wfre = {}
 		self.wcount = 0
 		for tid in self.tweets:
-			wordsint = {}
-			tokens = self.tweets[tid][1].split(' ')
-			while tokens.__contains__(''):
-				tokens.remove('')
-			for word in tokens:
-				if self.wfre.has_key(word):
-					if not wordsint.has_key(word):
-						self.wfre[word] = self.wfre[word] + 1
-				else:
-					self.words.append(word)
-					self.wfre[word] = 1
-					self.wcount = self.wcount + 1
-					wordsint[word] = 1
+			self.update_words(tid)
 		return self.wcount
 
 	def calculate_statement( self, thres = 0.8 ):
 		stat = ''
 		for i in range(0,self.wcount):
 			if self.wfre[self.words[i]] >= thres* self.tweets.__len__():
-				stat = stat + ' ' + self.words[i]
+				stat = stat + ' ' + self.words[i][0]
 		self.statement = stat[1:]
 		return self.statement
 	
@@ -182,18 +186,27 @@ class rumor:
 		if not self.tweets.has_key(tid):
 			return -1
 		wordsint = {}
-		tokens = self.tweets[tid][1].split(' ')
+		tweet = zhe_preprocess(self.tweets[tid][1])
+		tokens = tweet.split(' ')
 		while tokens.__contains__(''):
 			tokens.remove('')
 		for word in tokens:
-			if self.wfre.has_key(word):
-				if not wordsint.has_key(word):
-					self.wfre[word] = self.wfre[word] + 1
+			if wordsint.has_key(word):
+				wordsint[word] = wordsint[word]+1
+				if self.wfre.has_key((word,wordsint[word])):
+					self.wfre[(word,wordsint[word])] = self.wfre[(word,wordsint[word])] + 1
+				else:
+					self.wfre[(word,wordsint[word])] = 1
+					self.words.append((word,wordsint[word]))
+					self.wcount = self.wcount + 1
 			else:
-				self.words.append(word)
-				self.wfre[word] = 1
-				self.wcount = self.wcount + 1
 				wordsint[word] = 1
+				if self.wfre.has_key((word, wordsint[word])):
+					self.wfre[(word,wordsint[word])] = self.wfre[(word,wordsint[word])] + 1
+				else:
+					self.wfre[(word,wordsint[word])] = 1
+					self.words.append((word,wordsint[word]))
+					self.wcount = self.wcount + 1
 		return self.wcount
 	
 	def update_statement( self, tid ):
@@ -216,10 +229,10 @@ class rumor:
 class rumorpool:
 	rumors = {}
 	curid = 0
-	connectthres = 0.75
+	connectthres = 0.70
 	numhash = 50
 	mergelog = []
-	def __init__( self, thres = 0.75, numhash = 50 ):
+	def __init__( self, thres = 0.70, numhash = 50 ):
 		self.rumors = {}
 		self.curid = 0
 		self.connectthres = thres
@@ -270,3 +283,10 @@ class rumorpool:
 			summary_file.write( str(key) + '\t' + self.rumors[key].output_summary() + '\n')
 			tweets_file.write( self.rumors[key].output_tweets(key) )
 
+	def output_select(self, summary_file, tweets_file ):
+		for i in range(0,self.curid):
+			if self.rumors.has_key(self.curid-i):
+				if self.rumors[self.curid-i].tweets.__len__() >= 3:
+					key = self.curid-i
+					summary_file.write( str(key) + '\t' + self.rumors[key].output_summary() + '\n')
+					tweets_file.write( self.rumors[key].output_tweets(key) )
