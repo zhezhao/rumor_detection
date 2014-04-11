@@ -9,8 +9,8 @@ from nltk.stem import PorterStemmer
 stemmer = PorterStemmer()
 rp = rumor_detect.rumorpool()
 
-sum_f = open('output_summary','w')
-twe_f = open('output_tweets', 'w')
+his_sum_f = open('summary_history','a')
+his_twe_f = open('tweets_history','a')
 
 def stream_clustering():
 	log = open('log','w')
@@ -35,9 +35,17 @@ def stream_clustering():
 			rp.once_statement()
 			sum_f = open('output_summary','w')
 			twe_f = open('output_tweets', 'w')
+			clu_f = open('cluster_history','w')
 			rp.output_select(sum_f,twe_f)
+			rp.output_mergelog(clu_f)
 			sum_f.close()
 			twe_f.close()
+			clu_f.close()
+	
+		if count % 1000 == 1:
+			rp.output_select(his_sum_f,his_twe_f)
+			rp.delete_old_rumor()
+			
 	
 
 stream_clustering()

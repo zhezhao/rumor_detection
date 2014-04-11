@@ -131,6 +131,16 @@ def minhash_similarity(minhash1, minhash2, numhash):
 	return sim
 
 
+def twitter_date_to_sec(text):
+	if text is None:
+		return time.time()
+	try:
+		secs = time.mktime(time.strptime(text,'%a %b %d %H:%M:%S +0000 %Y'))
+	except:
+		secs = time.time()
+	return secs
+
+
 class rumor:
 	tweets = {}
 	statement = ''
@@ -138,6 +148,7 @@ class rumor:
 	wfre = {}
 	wcount = 0
 	last_tweet = '0'
+	last_sec = 0
 	def __init__( self, tweets = {}):
 		self.tweets = tweets
 		if tweets != {}:
@@ -151,14 +162,17 @@ class rumor:
 			if sim >= thres:
 				return 1
 			else:
-				return -1
+				if sim <= thres/2:
+					return -1
+		return -1
 
 	def addtweet( self, tweet ):
 		if self.tweets.has_key(tweet[0]):
 			return 0
 		self.tweets[tweet[0]]=tweet
 		self.last_tweet = tweet[2]
-		return tweet[0]
+		self.last_sec = twitter_date_to_sec(tweet[2])
+		return self.sec
 	
 	def calculate_words( self ):
 		self.words = []
@@ -232,11 +246,17 @@ class rumorpool:
 	connectthres = 0.70
 	numhash = 50
 	mergelog = []
-	def __init__( self, thres = 0.70, numhash = 50 ):
+	last_sec = 0
+	hour_thres = 24
+
+	def __init__( self, thres = 0.70, numhash = 50 , hour_thres = 24):
 		self.rumors = {}
 		self.curid = 0
 		self.connectthres = thres
 		self.numhash = numhash
+		self.mergelog.append((0,time.time()))
+		self.last_sec = 0
+		self.hour_thres = hour_thres
 
 	def mergerumor( self, keys ):
 		if keys == []:
@@ -245,12 +265,12 @@ class rumorpool:
 			return keys[0]
 		new_rumor = rumor({})
 		self.curid = self.curid + 1
-		self.mergelog.append(0)
+		self.mergelog.append((0, time.time()))
 		for i in keys:
 			old_rumor = self.rumors.pop(i)
 			for tid in old_rumor.tweets:
 				new_rumor.addtweet( old_rumor.tweets[tid] )
-			self.mergelog[i] = self.curid
+			self.mergelog[i] = ( self.curid, time.time() )
 		self.rumors[self.curid] = new_rumor
 		return self.curid
 	
@@ -265,10 +285,10 @@ class rumorpool:
 		rid = self.mergerumor(matched)
 		if rid is None:
 			self.curid = self.curid + 1
-			self.mergelog.append(0)
+			self.mergelog.append((0,time.time()))
 			self.rumors[self.curid] = rumor({})
 			rid = self.curid
-		self.rumors[rid].addtweet(tweet)
+		self.last_sec = self.rumors[rid].addtweet(tweet)
 		return rid
 
 	def once_statement(self):
@@ -283,10 +303,26 @@ class rumorpool:
 			summary_file.write( str(key) + '\t' + self.rumors[key].output_summary() + '\n')
 			tweets_file.write( self.rumors[key].output_tweets(key) )
 
-	def output_select(self, summary_file, tweets_file ):
+	def output_select(self, summary_file, tweets_file , prefix=''):
 		for i in range(0,self.curid):
 			if self.rumors.has_key(self.curid-i):
 				if self.rumors[self.curid-i].tweets.__len__() >= 3:
 					key = self.curid-i
-					summary_file.write( str(key) + '\t' + self.rumors[key].output_summary() + '\n')
-					tweets_file.write( self.rumors[key].output_tweets(key) )
+					summary_file.write( prefix + str(key) + '\t' + self.rumors[key].output_summary() + '\n')
+					tweets_file.write( self.rumors[key].output_tweets( prefix + str(key) ) )
+
+	def output_mergelog(self,outfile):
+		for i in range(1, self.curid):
+			outfile.write( str(i) + '\t' + str(self.mergelog[i][0]) + '\t' + str(self.mergelog[i][1]) + '\n' )
+		return self.curid
+
+	def delete_old_rumor(self):
+		for rid in self.rumors:
+			if self.rumors[rid].last_sec + self.hour_thres*3600 < self.last_sec:
+				self.rumors.pop(rid)
+				self.mergelog[rid] = ( -1, time.time() )
+
+
+
+
+
