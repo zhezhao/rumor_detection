@@ -6,5 +6,5 @@ if [ -z $1 ]; then
 	exit 0
 fi
 
-tail -f $1 | src/python/filter.py | src/python/cluster.py
+tail -n 100000 -f $1 | rumor_detection/src/python/filter.py | rumor_detection/src/python/pipeline.py $2
 

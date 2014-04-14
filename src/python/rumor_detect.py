@@ -172,7 +172,7 @@ class rumor:
 		self.tweets[tweet[0]]=tweet
 		self.last_tweet = tweet[2]
 		self.last_sec = twitter_date_to_sec(tweet[2])
-		return self.sec
+		return self.last_sec
 	
 	def calculate_words( self ):
 		self.words = []
@@ -247,9 +247,9 @@ class rumorpool:
 	numhash = 50
 	mergelog = []
 	last_sec = 0
-	hour_thres = 24
+	hour_thres = 36
 
-	def __init__( self, thres = 0.70, numhash = 50 , hour_thres = 24):
+	def __init__( self, thres = 0.70, numhash = 50 , hour_thres = 36):
 		self.rumors = {}
 		self.curid = 0
 		self.connectthres = thres
@@ -321,6 +321,173 @@ class rumorpool:
 			if self.rumors[rid].last_sec + self.hour_thres*3600 < self.last_sec:
 				self.rumors.pop(rid)
 				self.mergelog[rid] = ( -1, time.time() )
+
+
+# for match only, will be replaced by retrieve back
+def update_rumorpool_from_file( output_summary ):
+	stemmer = PorterStemmer()
+	rp = rumorpool_center()
+	for line in output_summary:
+		line_s = re.sub('\n','',line)
+		texts = line_s.split('\t')
+		if texts.__len__() < 4:
+			return rumorpool_center()
+		minhash = shingle_minhash( shingle( zhe_pipeline(texts[2], stemmer), 3 ) , 50 )
+		rp.addrumor(texts[0],texts[1],texts[2],texts[3],minhash)
+
+	return rp
+
+# for match only, will be replaced by retrieva back
+class rumorpool_center:
+	rumors = {}
+	curid = 0
+	numhash = 50
+	connectthres = 0.60
+	last_sec = 0
+	def __init__(self, curid = 0, numhash = 50, connectthres = 0.60 ):
+		self.rumors = {}
+		self.curid = curid
+		self.numhash = numhash
+		self.connectthres = connectthres
+	
+	
+	def addrumor( self, rid, last_update, text, scount, minhash ):
+		self.rumors[rid] = ( rid, last_update, text, scount, minhash )
+		if self.curid < rid:
+			self.curid = rid
+			self.last_sec = twitter_date_to_sec(last_update[13:])
+
+	def match( self, tweet ):
+		maxsim = 0
+		maxrid = 0
+		for rid in self.rumors:
+			sim = minhash_similarity( self.rumors[rid][4], tweet[3], self.numhash)
+			if maxsim < sim:
+				maxsim = sim
+				maxrid = rid
+		if maxsim > self.connectthres:
+			return maxrid
+
+		return 0
+
+
+def update_rumors_from_file( output_summary ):
+	rumors = {}
+	stemmer = PorterStemmer()
+	for line in output_summary:
+		line_s = re.sub('\n','',line)
+		texts = line_s.split('\t')
+		if texts.__len__() < 4:
+			return {}
+		minhash = shingle_minhash( shingle( zhe_pipeline(texts[2], stemmer), 3 ) , 50 )
+		rumors[texts[0]] = (texts[0],texts[1],texts[2],texts[3],minhash)
+	return rumors
+
+
+# for match and retrieval back
+# it can aslo be used to do retrieval only, in this case, a buffer layer will be created
+class retrieve_pool:
+	rumors = {}
+	timestamp = {}
+	tweets = []
+	cur_time = 0
+	curid = 0
+	numhash = 50
+	connectthres = 0.60
+	update_thres = 5
+	count_thres = 5000000
+	def __init__( self, numhash = 50, connectthres = 0.60, update_thres = 5, count_thres = 5000000 ):
+		self.numhash = numhash
+		self.rumors = {}
+		self.timestamp = {}
+		self.tweets = []
+		self.cur_time = 0
+		self.curid = 0
+		self.numhash = numhash
+		self.connectthres = connectthres
+		self.update_thres = update_thres
+		self.count_thres = count_thres
+	
+	# for retrieve back new only, for match and retrieve , use copy rumor
+	def update_rumor( self, rp_center ):
+		new_keys = []
+		for rid in self.rumors:
+			if self.timestamp[rid] >= self.update_thres:
+				self.rumors.pop(rid)
+				self.timestamp.pop(rid)
+			self.timestamp[rid] = self.timestamp[rid] + 1
+		for rid in rp_center.rumors:
+			if rid > self.curid:
+				self.curid = rid
+				self.rumors[rid] = rp_center.rumors[rid]
+				self.timestamp[rid] = 0
+				new_keys.append(rid)
+
+		return new_keys.__len__()
+
+	def copy_rumor( self, filename ):
+		maxrid = 0
+		output_summary = open(filename, 'r')
+		rumors = update_rumors_from_file(output_summary)
+		output_summary.close()
+		while rumors.__len__() < 1:
+			time.sleep(1)
+			output_summary = open(filename, 'r')
+			rumors = update_rumors_from_file(output_summary)
+			output_summary.close()
+		self.rumors = {}
+		new_keys = []
+		for rid in rumors:
+			self.rumors[rid] = rumors[rid]
+			if rid > self.curid:
+				new_keys.append(rid)
+				if rid > maxrid:
+					maxrid = rid
+		
+		self.curid = maxrid
+		return new_keys
+
+	def update_tweets(self):
+		self.tweets = self.tweets[-self.count_thres:]
+
+	def add_tweets(self, tweet ):
+		maxsim = 0
+		maxrid = 0
+		for rid in self.rumors:
+			sim = minhash_similarity( self.rumors[rid][4], tweet[3], self.numhash)
+			if maxsim < sim:
+				maxsim = sim
+				maxrid = rid
+		if maxsim > self.connectthres:
+			return maxrid
+		else:
+			self.tweets.append(tweet)
+			return 0
+
+	def retrieve_back(self, new_keys, output_file):
+		count = 0
+		for i in range(0,self.tweets.__len__()):
+			tweet = self.tweets[i]
+			maxsim = 0
+			maxrid = 0
+			for rid in new_keys:
+				sim = minhash_similarity( self.rumors[rid][4], tweet[3], self.numhash)
+				if maxsim < sim:
+					maxsim = sim
+					maxrid = rid
+			if maxsim > self.connectthres:
+				output_file.write( str(maxrid) + '\t' + tweet[0] +'\t' + tweet[1] + '\t' + tweet[2] + '\n')
+				del self.tweets[i]
+				count = count + 1
+		return count
+
+
+
+
+
+
+
+
 
 
 

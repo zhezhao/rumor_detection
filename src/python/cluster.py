@@ -9,9 +9,6 @@ from nltk.stem import PorterStemmer
 stemmer = PorterStemmer()
 rp = rumor_detect.rumorpool()
 
-his_sum_f = open('summary_history','a')
-his_twe_f = open('tweets_history','a')
-
 def stream_clustering():
 	log = open('log','w')
 	count = 0
@@ -30,7 +27,7 @@ def stream_clustering():
 			if minhash is not None:
 				tweet = ( tid, text, ctime, minhash )
 				count = count + 1
-				log.write(str(count) + 'th tweets out of ' + str(allcount) + ' inserted into cluster' + str(rp.insert(tweet)) +'\n')
+				print str(count) + 'th tweets out of ' + str(allcount) + ' inserted into cluster' + str(rp.insert(tweet))
 		if count % 50 == 1:
 			rp.once_statement()
 			sum_f = open('output_summary','w')
@@ -43,7 +40,11 @@ def stream_clustering():
 			clu_f.close()
 	
 		if count % 1000 == 1:
-			rp.output_select(his_sum_f,his_twe_f)
+			his_sum_f = open('summary_history','a')
+			his_twe_f = open('tweets_history','a')
+			rp.output_select(his_sum_f,his_twe_f, str(count)+':')
+			his_sum_f.close()
+			his_twe_f.close()
 			rp.delete_old_rumor()
 			
 	
