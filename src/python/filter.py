@@ -4,10 +4,11 @@ import fileinput
 import re
 import rumor_detect
 from nltk.stem import PorterStemmer
+import sys
 
 stemmer = PorterStemmer()
-signalfile = open( 'signal','w+' )
-nsignalfile = open( 'nsignal','w+')
+signalfile = open( 'signal','w+',0 )
+nsignalfile = open( 'nsignal','w+',0)
 
 for line in fileinput.input():
 	line_s = re.sub('\n','',line)
@@ -22,5 +23,6 @@ for line in fileinput.input():
 			if signaltext is not None:
 				signalfile.write( tid+'\t'+text+'\t'+ctime+'\t'+signaltext+'\n')
 				print( tid+'\t'+text+'\t'+ctime+'\t'+signaltext )
+				sys.stdout.flush()
 			else:
 				nsignalfile.write( tid+'\t'+text+'\t'+ctime+'\n')
