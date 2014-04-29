@@ -317,10 +317,13 @@ class rumorpool:
 		return self.curid
 
 	def delete_old_rumor(self):
+		del_ids = []
 		for rid in self.rumors:
 			if self.rumors[rid].last_sec + self.hour_thres*3600 < self.last_sec:
-				self.rumors.pop(rid)
-				self.mergelog[rid] = ( -1, time.time() )
+				del_ids.append(rid)
+		for rid in del_ids:
+			self.rumors.pop(rid)
+			self.mergelog[rid] = ( -1, time.time() )
 
 
 # for match only, will be replaced by retrieve back

@@ -123,16 +123,16 @@ print '[INFO] Starting Clustering'
 
 clustering.start()
 
-nump = 5
-threads = []
-for num in range(0,nump):
-	print '[INFO] Retrieve: starting thread number ' + str(num) + ' of ' + str(nump) + ' threads!'
-	t = threading.Thread(target=retrieve, args = ('output_summary', 'nsignal', 'matched' , nump, num))
-	threads.append(t)
-	t.start()
-
-
-for thread in threads:
-	thread.join()
+#nump = 5
+#threads = []
+#for num in range(0,nump):
+#	print '[INFO] Retrieve: starting thread number ' + str(num) + ' of ' + str(nump) + ' threads!'
+#	t = threading.Thread(target=retrieve, args = ('output_summary', 'nsignal', 'matched' , nump, num))
+#	threads.append(t)
+#	t.start()
+#
+#
+#for thread in threads:
+#	thread.join()
 
 clustering.join()
