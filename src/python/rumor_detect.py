@@ -149,15 +149,25 @@ class rumor:
 	wcount = 0
 	last_tweet = '0'
 	last_sec = 0
+	first_sec = 0
+	first_tweet = '0'
 	def __init__( self, tweets = {}):
 		self.tweets = tweets
+		self.statement = ''
+		self.words = []
+		self.wfre = {}
+		self.wcount = 0
+		self.last_tweet = '0'
+		self.last_sec = 0
+		self.first_sec = time.time()
+		self.first_tweet = '0'
 		if tweets != {}:
 			self.once_statement()
 	
 	def connect( self, tweet, thres ,numhash):
+		if self.tweets.has_key(tweet[0]):
+			return 2
 		for tid in self.tweets:
-			if tid == tweet[0]:
-				return 2
 			sim = minhash_similarity(self.tweets[tid][3], tweet[3] ,numhash )
 			if sim >= thres:
 				return 1
@@ -170,8 +180,13 @@ class rumor:
 		if self.tweets.has_key(tweet[0]):
 			return 0
 		self.tweets[tweet[0]]=tweet
-		self.last_tweet = tweet[2]
-		self.last_sec = twitter_date_to_sec(tweet[2])
+		thissec = twitter_date_to_sec(tweet[2])
+		if thissec > self.last_sec:
+			self.last_tweet = tweet[2]
+			self.last_sec = thissec
+		if thissec < self.first_sec:
+			self.first_sec = thissec
+			self.first_tweet = tweet[2]
 		return self.last_sec
 	
 	def calculate_words( self ):
@@ -231,7 +246,7 @@ class rumor:
 		
 			
 	def output_summary( self ):
-		return 'last_update: ' + self.last_tweet + '\t' + self.statement + '\t' + str( self.tweets.__len__() )
+		return 'last_update: ' + self.last_tweet + '\t' + self.statement + '\t' + str( self.tweets.__len__() ) + '\t' + self.first_tweet
 	
 	def output_tweets( self, prefix ):
 		outputstr = '\n'
@@ -251,6 +266,7 @@ class rumorpool:
 
 	def __init__( self, thres = 0.70, numhash = 50 , hour_thres = 36):
 		self.rumors = {}
+		self.mergelog = []
 		self.curid = 0
 		self.connectthres = thres
 		self.numhash = numhash
@@ -303,10 +319,10 @@ class rumorpool:
 			summary_file.write( str(key) + '\t' + self.rumors[key].output_summary() + '\n')
 			tweets_file.write( self.rumors[key].output_tweets(key) )
 
-	def output_select(self, summary_file, tweets_file , prefix=''):
+	def output_select(self, summary_file, tweets_file , thres = 3, prefix=''):
 		for i in range(0,self.curid):
 			if self.rumors.has_key(self.curid-i):
-				if self.rumors[self.curid-i].tweets.__len__() >= 3:
+				if self.rumors[self.curid-i].tweets.__len__() >= thres:
 					key = self.curid-i
 					summary_file.write( prefix + str(key) + '\t' + self.rumors[key].output_summary() + '\n')
 					tweets_file.write( self.rumors[key].output_tweets( prefix + str(key) ) )
@@ -324,6 +340,37 @@ class rumorpool:
 		for rid in del_ids:
 			self.rumors.pop(rid)
 			self.mergelog[rid] = ( -1, time.time() )
+	
+
+def read_rp_from_file( output_tweets, numhash=50):
+	rp = rumorpool()
+	stemmer = PorterStemmer()
+	for line in output_tweets:
+		line_n = re.sub('\n','',line)
+		temp = line_n.split('\t')
+		if len(temp) < 4:
+			continue
+		rid = int(temp[0])
+		if len(rp.mergelog) < rid + 1:
+			rp.mergelog[len(rp.mergelog):rid+1] = [( -1, time.time()) for i in range(len(rp.mergelog), rid+1)]
+			rp.mergelog[rid] = ( 0, time.time() )
+			rp.curid = rid+1
+		if rp.rumors.has_key(rid):
+			minhash = shingle_minhash( shingle( zhe_pipeline(temp[2], stemmer), 3 ) , numhash )
+			tweet = ( temp[1], temp[2], temp[3], minhash )
+			rp.rumors[rid].addtweet(tweet)
+		else:
+			rp.rumors[rid] = rumor({})
+			rp.mergelog[rid] = ( 0, time.time() )
+			minhash = shingle_minhash( shingle( zhe_pipeline(temp[2], stemmer), 3 ), numhash )
+			tweet  = ( temp[1], temp[2], temp[3], minhash )
+			rp.rumors[rid].addtweet(tweet)
+	for rid in rp.rumors:
+		if rp.last_sec < rp.rumors[rid].last_sec:
+			rp.last_sec = rp.rumors[rid].last_sec
+	rp.once_statement()
+	return rp
+
 
 
 # for match only, will be replaced by retrieve back

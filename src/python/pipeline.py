@@ -13,11 +13,17 @@ import datetime
 
 
 def stream_clustering():
-	log = open('log','w')
+	log = open('log','w',0)
 	count = 0
 	allcount = 0
 	stemmer = PorterStemmer()
-	rp = rumor_detect.rumorpool()
+	if os.path.isfile('output_tweets'):
+		print 'history file located, read history!'
+		history = open( 'output_tweets','r')
+		rp = rumor_detect.read_rp_from_file(history)
+		history.close()
+	else:
+		rp = rumor_detect.rumorpool()
 	for line in fileinput.input():
 		allcount = allcount + 1
 		line_s = re.sub('\n','',line)
@@ -31,13 +37,15 @@ def stream_clustering():
 			if minhash is not None:
 				tweet = ( tid, text, ctime, minhash )
 				count = count + 1
-				print '[CLU] ' + str(count) + 'th tweets out of ' + str(allcount) + ' inserted into cluster' + str(rp.insert(tweet))
+				insert_res = rp.insert(tweet)
+				print '[CLU] ' + str(count) + 'th tweets out of ' + str(allcount) + ' inserted into cluster' + str(insert_res)
+				log.write( '[CLU] ' + str(count) + 'th tweets out of ' + str(allcount) + ' inserted into cluster' + str(insert_res) + '\tDetailed:\t' + line_s + '\n' )
 		if count % 50 == 1:
 			rp.once_statement()
 			sum_f = open('output_summary','w',0)
 			twe_f = open('output_tweets', 'w',0)
 			clu_f = open('cluster_history','w',0)
-			rp.output_select(sum_f,twe_f)
+			rp.output_select(sum_f,twe_f,1)
 			rp.output_mergelog(clu_f)
 			sum_f.close()
 			twe_f.close()
@@ -46,7 +54,7 @@ def stream_clustering():
 		if count % 1000 == 1:
 			his_sum_f = open('summary_history','a')
 			his_twe_f = open('tweets_history','a')
-			rp.output_select(his_sum_f,his_twe_f, str(count)+':')
+			rp.output_select(his_sum_f,his_twe_f,1, str(count)+':')
 			his_sum_f.close()
 			his_twe_f.close()
 			rp.delete_old_rumor()

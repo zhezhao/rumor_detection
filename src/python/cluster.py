@@ -33,7 +33,7 @@ def stream_clustering():
 			sum_f = open('output_summary','w')
 			twe_f = open('output_tweets', 'w')
 			clu_f = open('cluster_history','w')
-			rp.output_select(sum_f,twe_f)
+			rp.output_select(sum_f,twe_f,1)
 			rp.output_mergelog(clu_f)
 			sum_f.close()
 			twe_f.close()
@@ -42,7 +42,7 @@ def stream_clustering():
 		if count % 1000 == 1:
 			his_sum_f = open('summary_history','a')
 			his_twe_f = open('tweets_history','a')
-			rp.output_select(his_sum_f,his_twe_f, str(count)+':')
+			rp.output_select(his_sum_f,his_twe_f, 1, str(count)+':')
 			his_sum_f.close()
 			his_twe_f.close()
 			rp.delete_old_rumor()
