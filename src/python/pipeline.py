@@ -9,10 +9,20 @@ import sys
 import threading
 import os.path
 import datetime
+import MySQLdb
 
 
 
-def stream_clustering():
+def stream_clustering( useDB = 0):
+
+	if useDB == 1:
+		try:
+			db =MySQLdb.connect(host="173.194.241.163", user="root", passwd="rumorlens", db="rumor_detection")
+			cur = db.cursor()
+		except:
+			print 'DB error!'
+			useDB = 0
+
 	log = open('log','w',0)
 	count = 0
 	allcount = 0
@@ -24,7 +34,7 @@ def stream_clustering():
 		history.close()
 	else:
 		rp = rumor_detect.rumorpool()
-	for line in fileinput.input():
+	for line in sys.stdin:
 		allcount = allcount + 1
 		line_s = re.sub('\n','',line)
 		texts = line_s.split('\t')
@@ -50,6 +60,29 @@ def stream_clustering():
 			sum_f.close()
 			twe_f.close()
 			clu_f.close()
+			
+			if useDB == 1:
+				print 'Updating Database!'
+				try:
+					dbupdat = rp.update_database(cur,3)
+					db.commit()
+					print str(dbupdat) + ' rumors inserted!'
+				except:
+					print 'DB error! try reopen!'
+					try:
+						db.close()
+					except:
+						print 'DB closed! reopen!'
+					try:
+						db =MySQLdb.connect(host="173.194.241.163", user="root", passwd="rumorlens", db="rumor_detection")
+						cur = db.cursor()
+						dbupdat = rp.update_database(cur,3)
+						db.commit()
+						print str(dbupdat) + ' rumors inserted!'
+					except:
+						print 'DB reopen failed, will try again later'
+					
+						
 	
 		if count % 1000 == 1:
 			his_sum_f = open('summary_history','a')
@@ -124,8 +157,13 @@ def retrieve(output_summary, nsignal, matched, nump = 1, num = 0):
 
 
 
+if len(sys.argv) > 1:
+	useDB = int(sys.argv[1])
+else:
+	useDB = 0
 
-clustering =  threading.Thread(target=stream_clustering, args = ())
+
+clustering =  threading.Thread(target=stream_clustering, args = ([useDB]))
 
 print '[INFO] Starting Clustering'
 

@@ -4,6 +4,7 @@ import fileinput
 import re
 import time
 import hashlib
+import MySQLdb
 from nltk.stem import PorterStemmer
 
 
@@ -253,6 +254,15 @@ class rumor:
 		for tid in self.tweets:
 			outputstr = outputstr + str(prefix) + '\t' + str(tid) + '\t' + self.tweets[tid][1] + '\t' + self.tweets[tid][2] + '\n'
 		return outputstr[1:]
+	
+	def update_database( self, rid, cur ):
+		stat = re.sub( '\'','\'\'', self.statement)
+		cur.execute('''REPLACE INTO rumor_summary VALUES (''' + str(rid) + ''', \'''' + self.last_tweet + '''\', \'''' + stat + '''\', ''' + str(self.tweets.__len__()) + ''', \'''' + self.first_tweet + '''\')''' )
+		for tid in self.tweets:
+			tweet = re.sub( '\'','\'\'', self.tweets[tid][1] )
+			cur.execute( '''REPLACE INTO rumor_tweets VALUES (''' + str(rid) + ''', ''' + str(tid) + ''', \'''' + tweet + '''\', \'''' + self.tweets[tid][2] + '''\')''' )
+		return 1
+
 
 
 class rumorpool:
@@ -326,6 +336,12 @@ class rumorpool:
 					key = self.curid-i
 					summary_file.write( prefix + str(key) + '\t' + self.rumors[key].output_summary() + '\n')
 					tweets_file.write( self.rumors[key].output_tweets( prefix + str(key) ) )
+	def update_database( self, cur, thres =3 ):
+		stat = 0
+		for rid in self.rumors:
+			if self.rumors[rid].tweets.__len__() >= thres:
+				stat = stat + self.rumors[rid].update_database( rid, cur )
+		return stat
 
 	def output_mergelog(self,outfile):
 		for i in range(1, self.curid):
@@ -354,7 +370,7 @@ def read_rp_from_file( output_tweets, numhash=50):
 		if len(rp.mergelog) < rid + 1:
 			rp.mergelog[len(rp.mergelog):rid+1] = [( -1, time.time()) for i in range(len(rp.mergelog), rid+1)]
 			rp.mergelog[rid] = ( 0, time.time() )
-			rp.curid = rid+1
+			rp.curid = rid
 		if rp.rumors.has_key(rid):
 			minhash = shingle_minhash( shingle( zhe_pipeline(temp[2], stemmer), 3 ) , numhash )
 			tweet = ( temp[1], temp[2], temp[3], minhash )
