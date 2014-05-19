@@ -257,10 +257,10 @@ class rumor:
 	
 	def update_database( self, rid, cur ):
 		stat = re.sub( '\'','\'\'', self.statement)
-		cur.execute('''REPLACE INTO rumor_summary VALUES (''' + str(rid) + ''', \'''' + self.last_tweet + '''\', \'''' + stat + '''\', ''' + str(self.tweets.__len__()) + ''', \'''' + self.first_tweet + '''\')''' )
+		cur.execute('''REPLACE INTO rumor_summary_2 VALUES (''' + str(rid) + ''', STR_TO_DATE(\'''' + self.last_tweet + '''\',\'%W %M %d %H:%i:%s +0000 %Y\'), \'''' + stat + '''\', ''' + str(self.tweets.__len__()) + ''', STR_TO_DATE(\'''' + self.first_tweet + '''\', \'%W %M %d %H:%i:%s +0000 %Y\') )''' )
 		for tid in self.tweets:
 			tweet = re.sub( '\'','\'\'', self.tweets[tid][1] )
-			cur.execute( '''REPLACE INTO rumor_tweets VALUES (''' + str(rid) + ''', ''' + str(tid) + ''', \'''' + tweet + '''\', \'''' + self.tweets[tid][2] + '''\')''' )
+			cur.execute( '''REPLACE INTO rumor_tweets_2 VALUES (''' + str(rid) + ''', ''' + str(tid) + ''', \'''' + tweet + '''\', STR_TO_DATE(\'''' + self.tweets[tid][2] + '''\', \'%W %M %d %H:%i:%s +0000 %Y\') )''' )
 		return 1
 
 
