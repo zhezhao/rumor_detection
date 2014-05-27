@@ -133,7 +133,7 @@ def retrieve(output_summary, nsignal, matched, nump = 1, num = 0):
 		time.sleep(1)
 	count = 0
 	f = open(nsignal,'r')
-	mat = open(matched,'w',0)
+	mat = open(matched,'a+',0)
 	
 	repo = rumor_detect.retrieve_pool()
 	nk = repo.copy_rumor(output_summary)
@@ -142,7 +142,7 @@ def retrieve(output_summary, nsignal, matched, nump = 1, num = 0):
 		if int(time.time())%60 == 1:
 			nk = repo.copy_rumor(output_summary)
 			rtcount = repo.retrieve_back( nk, mat )
-			print '[RET]: ' + datetime.datetime.now().__str__()  + ':' + str(rtcount) + ' tweets retrieved back in ' + str(nk.__len__()) + ' new rumor clusters'
+			print '[RET Worker' + str(num+1) +' ]: ' + datetime.datetime.now().__str__()  + ':' + str(rtcount) + ' tweets retrieved back in ' + str(nk.__len__()) + ' new rumor clusters'
 			# get rid of old tweets
 			repo.update_tweets()
 	
@@ -150,10 +150,11 @@ def retrieve(output_summary, nsignal, matched, nump = 1, num = 0):
 		rid = repo.add_tweets(tweet)
 		if rid == 0:
 			if count % 1000 == 1:
-				print '[RET] ' + str(count) + 'th tweet inserted into retrieve pool. timestamp: ' + tweet[2]
+				print '[RET Worker' + str(num+1) +' ]: ' + str(count) + 'th tweet inserted into retrieve pool. timestamp: ' + tweet[2]
 		else:
-			print '[RET] ' + str(count) + 'th tweet matched to cluster' + str(rid) 
+			print '[RET Worker' + str(num+1) +' ]: ' + str(count) + 'th tweet matched to cluster' + str(rid) 
 			mat.write(str(rid) + '\t' + tweet[0] +'\t' + tweet[1] + '\t' + tweet[2] + '\n')
+		sys.stdout.flush()
 
 
 
@@ -169,16 +170,16 @@ print '[INFO] Starting Clustering'
 
 clustering.start()
 
-#nump = 5
-#threads = []
-#for num in range(0,nump):
-#	print '[INFO] Retrieve: starting thread number ' + str(num) + ' of ' + str(nump) + ' threads!'
-#	t = threading.Thread(target=retrieve, args = ('output_summary', 'nsignal', 'matched' , nump, num))
-#	threads.append(t)
-#	t.start()
-#
-#
-#for thread in threads:
-#	thread.join()
+nump = 10
+threads = []
+for num in range(0,nump):
+	print '[INFO] Retrieve: starting thread number ' + str(num+1) + ' of ' + str(nump) + ' threads!'
+	t = threading.Thread(target=retrieve, args = ('output_summary', 'nsignal', 'matched-'+str(num) , nump, num))
+	threads.append(t)
+	t.start()
+
+
+for thread in threads:
+	thread.join()
 
 clustering.join()

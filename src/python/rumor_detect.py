@@ -446,7 +446,7 @@ def update_rumors_from_file( output_summary ):
 		if texts.__len__() < 4:
 			return {}
 		minhash = shingle_minhash( shingle( zhe_pipeline(texts[2], stemmer), 3 ) , 50 )
-		rumors[texts[0]] = (texts[0],texts[1],texts[2],texts[3],minhash)
+		rumors[int(texts[0])] = (int(texts[0]),texts[1],texts[2],texts[3],minhash)
 	return rumors
 
 
@@ -461,8 +461,8 @@ class retrieve_pool:
 	numhash = 50
 	connectthres = 0.60
 	update_thres = 5
-	count_thres = 5000000
-	def __init__( self, numhash = 50, connectthres = 0.60, update_thres = 5, count_thres = 5000000 ):
+	count_thres = 50000
+	def __init__( self, numhash = 50, connectthres = 0.60, update_thres = 5, count_thres = 50000 ):
 		self.numhash = numhash
 		self.rumors = {}
 		self.timestamp = {}
@@ -532,7 +532,9 @@ class retrieve_pool:
 
 	def retrieve_back(self, new_keys, output_file):
 		count = 0
-		for i in range(0,self.tweets.__len__()):
+		lentw = self.tweets.__len__()
+		i = 0
+		while i < lentw:
 			tweet = self.tweets[i]
 			maxsim = 0
 			maxrid = 0
@@ -543,8 +545,11 @@ class retrieve_pool:
 					maxrid = rid
 			if maxsim > self.connectthres:
 				output_file.write( str(maxrid) + '\t' + tweet[0] +'\t' + tweet[1] + '\t' + tweet[2] + '\n')
-				del self.tweets[i]
+				self.tweets.pop(i)
+				lentw = lentw - 1
 				count = count + 1
+			else:
+				i = i + 1
 		return count
 
 
