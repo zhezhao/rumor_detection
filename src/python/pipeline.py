@@ -16,6 +16,8 @@ def insert_ranklist( t, cur ):
 	ranks = t.split('\n')
 	for rank in ranks:
 		score = rank.split('\t')
+		if score.__len__() < 2:
+			continue
 		rid = score[0]
 		rscore = score[1]
 		cur.execute('''REPLACE INTO ranklist VALUES(''' + rid + ''', ''' + rscore + ''', NOW() );''' )
