@@ -22,7 +22,7 @@ def insert_ranklist( t, cur ):
 		count = count + 1
 	return count
 
-def rank_cluster(useDB = 0, ranklist):
+def rank_cluster(ranklist, useDB = 0):
 	if useDB == 1:
 		try:
 			db =MySQLdb.connect(host="173.194.241.163", user="root", passwd="rumorlens", db="rumor_detection")
@@ -207,6 +207,10 @@ def retrieve(output_summary, nsignal, matched, nump = 1, num = 0):
 
 if len(sys.argv) > 1:
 	useDB = int(sys.argv[1])
+	if len(sys.argv) > 2:
+		useRank = 1
+	else:
+		useRank = 0
 else:
 	useDB = 0
 
@@ -225,8 +229,12 @@ for num in range(0,nump):
 	threads.append(t)
 	t.start()
 
+if useRank == 1:
+	ranking = threading.Thread( target=rank_cluster, args = ('ranklist', useDB ) )
+	ranking.start()
 
 for thread in threads:
 	thread.join()
 
 clustering.join()
+ranking.join()

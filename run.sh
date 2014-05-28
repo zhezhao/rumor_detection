@@ -8,7 +8,7 @@ fi
 
 if [ -z $2 ]; then
 	echo "Demo mode, read past file using slowcat!"
-	rumor_detection/slowcat $1 | rumor_detection/src/python/filter.py | rumor_detection/src/python/pipeline.py 0
+	rumor_detection/slowcat $1 | rumor_detection/src/python/filter.py | rumor_detection/src/python/pipeline.py 0 1
 else
 	echo "Begin rumor detection with $2 buffer tweets!"
 	if [ -z $3 ]; then
@@ -16,7 +16,12 @@ else
 	else
 		useDB=$3
 	fi
-	tail -n $2 -f $1 | rumor_detection/src/python/filter.py | rumor_detection/src/python/pipeline.py $useDB
+	if [ -z $4 ]; then
+		useRank=1
+	else
+		useRank=$4
+	fi
+	tail -n $2 -f $1 | rumor_detection/src/python/filter.py | rumor_detection/src/python/pipeline.py $useDB $useRank
 fi
 
 #example usage on google cloud
