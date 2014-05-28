@@ -7,11 +7,58 @@ import time
 from nltk.stem import PorterStemmer
 import sys
 import threading
-import os.path
 import datetime
 import MySQLdb
+import os
 
+def insert_ranklist( t, cur ):
+	count = 0
+	ranks = t.split('\n')
+	for rank in ranks:
+		score = rank.split('\t')
+		rid = score[0]
+		rscore = score[1]
+		cur.execute('''REPLACE INTO ranklist VALUES(''' + rid + ''', ''' + rscore + ''', NOW() );''' )
+		count = count + 1
+	return count
 
+def rank_cluster(useDB = 0, ranklist):
+	if useDB == 1:
+		try:
+			db =MySQLdb.connect(host="173.194.241.163", user="root", passwd="rumorlens", db="rumor_detection")
+			cur = db.cursor()
+		except:
+			print 'DB error!'
+			useDB = 0
+	while 1:
+		t = os.popen("./rumor_detection/src/shell/extract_feature_f13.sh | ./rumor_detection/src/shell/decision_tree_f13_7.sh" ).read()
+		f = open(ranklist,'w',0)
+		f.write(t)
+		f.close()
+		print '[RANK] caculating ranking scores and store in file'
+		if useDB ==  1:
+			try:
+				numr = insert_ranklist(t,cur)
+				db.commit()
+				print '[RANK] ' + str(numr) + ' ranking scores insert into Database'
+			except:
+				print 'DB error! try reopen!'
+				try:
+					db.close()
+				except:
+					print 'DB closed! reopen!'
+				try:
+					db =MySQLdb.connect(host="173.194.241.163", user="root", passwd="rumorlens", db="rumor_detection")
+					cur = db.cursor()
+					numr = insert_ranklist(t,cur)
+					db.commit()
+					print '[RANK] ' + str(numr) + ' ranking scores insert into Database'
+				except:
+					print '[RANK - ERR] database update failure, will try next time'
+		sys.stdout.flush()
+		time.sleep(200)
+		
+	
 
 def stream_clustering( useDB = 0):
 
