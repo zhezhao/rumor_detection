@@ -97,6 +97,6 @@ END{
 			f8 = 0;
 		else
 			f8 = entq[id]/ent[id];
-		print id"\t1:"f5" 2:"f6" 3:"f7" 4:"f8" 5:"f9" 6:"f10" 7:"f11" 8:"f12" 9:"f13" 10:"f14" 11:"f15" 12:"f16" 13:"f17;
+		print id"\t"numq[id]"\t"sum[id]"\t1:"f5" 2:"f6" 3:"f7" 4:"f8" 5:"f9" 6:"f10" 7:"f11" 8:"f12" 9:"f13" 10:"f14" 11:"f15" 12:"f16" 13:"f17;
 	}
 }' output_tweets matched*

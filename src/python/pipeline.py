@@ -16,12 +16,15 @@ def insert_ranklist( t, cur ):
 	ranks = t.split('\n')
 	for rank in ranks:
 		score = rank.split('\t')
-		if score.__len__() < 2:
+		if score.__len__() < 4:
 			continue
 		rid = score[0]
 		rscore = score[1]
-		cur.execute('''REPLACE INTO ranklist VALUES(''' + rid + ''', ''' + rscore + ''', NOW() );''' )
-		count = count + 1
+		qsum = score[2]
+		sum = score[3]
+		if int(qsum) >= 3:
+			cur.execute('''REPLACE INTO ranklist_2 VALUES(''' + rid + ''', ''' + rscore + ''', ''' + qsum + ''', ''' + sum + ''', NOW() );''' )
+			count = count + 1
 	return count
 
 def rank_cluster(ranklist, useDB = 0):
