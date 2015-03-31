@@ -256,6 +256,10 @@ class rumor:
 		return outputstr[1:]
 	
 	def update_database( self, rid, cur ):
+		# remove pattern "http : t co [0-9a0z]*" in statement.
+		stat = re.sub('http : t co [0-9a-z]*', '', self.statement)
+		# remove "rt" at the begining.
+		stat = re.sub('^rt', '', self.statement)
 		stat = re.sub( '\'','\'\'', self.statement)
 		cur.execute('''REPLACE INTO rumor_summary_2 VALUES (''' + str(rid) + ''', STR_TO_DATE(\'''' + self.last_tweet + '''\',\'%W %M %d %H:%i:%s +0000 %Y\'), \'''' + stat + '''\', ''' + str(self.tweets.__len__()) + ''', STR_TO_DATE(\'''' + self.first_tweet + '''\', \'%W %M %d %H:%i:%s +0000 %Y\') )''' )
 		for tid in self.tweets:
